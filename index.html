@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Smart Study Dashboard</title>
+  <style>
+    :root{
+      --bg:#0f1724; --card:#0b1220; --muted:#9aa4b2; --accent:#6ee7b7; --glass: rgba(255,255,255,0.03);
+      --glass-2: rgba(255,255,255,0.02);
+    }
+    [data-theme='light']{
+      --bg:#f6f9fb; --card:#ffffff; --muted:#6b7280; --accent:#0ea5a0; --glass: rgba(0,0,0,0.03); --glass-2: rgba(0,0,0,0.02);
+    }
+
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;font-family:Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; background:linear-gradient(180deg,var(--bg),#071028); color: #e6eef6}
+    .app{max-width:1100px;margin:28px auto;padding:20px}
+    header{display:flex;gap:16px;align-items:center;justify-content:space-between}
+    .brand{display:flex;gap:12px;align-items:center}
+    .logo{width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,var(--accent),#60a5fa);display:flex;align-items:center;justify-content:center;font-weight:700;color:#022;box-shadow:0 6px 18px rgba(2,6,23,0.6)}
+    h1{font-size:18px;margin:0}
+    p.lead{margin:0;color:var(--muted);font-size:13px}
+
+    .controls{display:flex;gap:8px;align-items:center}
+    button, .btn{background:transparent;border:1px solid var(--glass);padding:8px 12px;border-radius:10px;color:inherit;cursor:pointer}
+    .btn.primary{background:linear-gradient(90deg,var(--accent),#60a5fa);color:#022;border:0}
+
+    main{display:grid;grid-template-columns:1fr 380px;gap:18px;margin-top:18px}
+
+    .card{background: linear-gradient(180deg,var(--card), rgba(255,255,255,0.02));border-radius:14px;padding:14px;border:1px solid var(--glass-2)}
+
+    /* Left column */
+    .tasks{display:flex;flex-direction:column;gap:12px}
+    .add-task{display:flex;gap:8px}
+    input[type='text']{flex:1;padding:10px;border-radius:10px;border:1px solid var(--glass);background:transparent;color:inherit}
+    .list{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+    .task{display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;background:var(--glass);border:1px solid rgba(255,255,255,0.02)}
+    .task .title{flex:1}
+    .task .meta{font-size:12px;color:var(--muted)}
+
+    /* Right column */
+    .right-col{display:flex;flex-direction:column;gap:12px}
+    .timer{display:flex;flex-direction:column;align-items:center;gap:6px}
+    .time{font-size:36px;font-weight:700}
+    .timer-controls{display:flex;gap:8px}
+
+    .notes textarea{width:100%;min-height:120px;padding:10px;border-radius:10px;border:1px solid var(--glass);background:transparent;color:inherit}
+
+    footer{margin-top:18px;text-align:center;color:var(--muted);font-size:13px}
+
+    /* responsive */
+    @media (max-width:900px){main{grid-template-columns:1fr} .brand h1{display:none}}
+
+    /* small helpers */
+    .flex{display:flex;align-items:center}
+    .spacer{flex:1}
+    .chip{padding:6px 10px;border-radius:999px;border:1px solid var(--glass);font-size:13px}
+
+    /* language switch small */
+    .lang-select{display:flex;gap:6px}
+
+    /* animations */
+    .pulse{animation:pulse 1.8s infinite}
+    @keyframes pulse{0%{transform:scale(1)}50%{transform:scale(1.03)}100%{transform:scale(1)}}
+
+  </style>
+</head>
+<body data-theme="dark">
+  <div class="app">
+    <header>
+      <div class="brand">
+        <div class="logo">SS</div>
+        <div>
+          <h1 id="title">Smart Study Dashboard</h1>
+          <p class="lead" id="subtitle">Plan, track and focus — ek hi jagah</p>
+        </div>
+      </div>
+
+      <div class="controls">
+        <div class="lang-select">
+          <button class="btn" id="lang-en">EN</button>
+          <button class="btn" id="lang-hi">HI</button>
+        </div>
+        <button class="btn" id="theme-toggle">Toggle Theme</button>
+        <button class="btn primary" id="download-btn">Download HTML</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="card tasks" aria-labelledby="task-heading">
+        <div class="flex">
+          <h2 id="task-heading" style="margin:0">Today's Tasks</h2>
+          <div class="spacer"></div>
+          <div class="chip" id="task-count">0 tasks</div>
+        </div>
+
+        <div class="add-task">
+          <input type="text" id="task-input" placeholder="Add a task — e.g., DSA practice 1 hour" aria-label="New task">
+          <button class="btn primary" id="add-btn">Add</button>
+        </div>
+
+        <div class="list" id="task-list" aria-live="polite"></div>
+      </section>
+
+      <aside class="right-col">
+        <div class="card timer" id="pomodoro-card">
+          <div class="flex" style="width:100%">
+            <div>
+              <h3 id="timer-title">Pomodoro Timer</h3>
+              <div class="meta" id="timer-sub">25:00 focus — 5:00 break</div>
+            </div>
+            <div class="spacer"></div>
+            <div class="chip" id="mode-chip">Focus</div>
+          </div>
+
+          <div class="time" id="time-display">25:00</div>
+          <div class="timer-controls">
+            <button class="btn" id="start-btn">Start</button>
+            <button class="btn" id="pause-btn">Pause</button>
+            <button class="btn" id="reset-btn">Reset</button>
+          </div>
+        </div>
+
+        <div class="card notes">
+          <div class="flex"><h3 style="margin:0" id="notes-title">Quick Notes</h3><div class="spacer"></div><div class="chip">Autosaved</div></div>
+          <textarea id="notes" placeholder="Type quick notes, formulas, or links..."></textarea>
+        </div>
+
+        <div class="card stats" id="stats-card">
+          <h3 id="stats-title">Progress</h3>
+          <p class="meta" id="stats-sub">You completed <span id="done-count">0</span> tasks today.</p>
+          <div style="height:8px;background:var(--glass);border-radius:999px;overflow:hidden;margin-top:8px">
+            <div id="progress-bar" style="height:100%;width:0%"></div>
+          </div>
+        </div>
+      </aside>
+    </main>
+
+    <footer>
+      <div id="footer-text">Made with ❤ — Open to suggestions. Press "Download HTML" to save this page as a single file.</div>
+    </footer>
+  </div>
+
+  <script>
+    /* ======= Simple i18n ======= */
+    const LANG = {
+      en:{title:'Smart Study Dashboard', subtitle:'Plan, track and focus — all in one place', 'todayTasks':'Today\'s Tasks','add':'Add','download':'Download HTML','pomodoro':'Pomodoro Timer','notes':'Quick Notes','progress':'Progress'},
+      hi:{title:'Smart Study Dashboard', subtitle:'Plan, track aur focus — ek hi jagah', 'todayTasks':'Aaj ke Kaam','add':'Jodho','download':'HTML Download karo','pomodoro':'Pomodoro Timer','notes':'Quick Notes','progress':'Pragati'}
+    }
+
+    let currentLang = 'en'
+    const setLang = (l)=>{
+      currentLang = l
+      document.getElementById('title').textContent = LANG[l].title
+      document.getElementById('subtitle').textContent = LANG[l].subtitle
+      document.getElementById('task-heading').textContent = LANG[l].todayTasks
+      document.getElementById('add-btn').textContent = LANG[l].add
+      document.getElementById('download-btn').textContent = LANG[l].download
+      document.getElementById('timer-title').textContent = LANG[l].pomodoro
+      document.getElementById('notes-title').textContent = LANG[l].notes
+      document.getElementById('stats-title').textContent = LANG[l].progress
+    }
+
+    document.getElementById('lang-en').addEventListener('click',()=>setLang('en'))
+    document.getElementById('lang-hi').addEventListener('click',()=>setLang('hi'))
+    setLang('en')
+
+    /* ======= Theme toggle ======= */
+    const themeBtn = document.getElementById('theme-toggle')
+    themeBtn.addEventListener('click', ()=>{
+      const body = document.body
+      const theme = body.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'
+      body.setAttribute('data-theme', theme)
+    })
+
+    /* ======= Tasks (localStorage) ======= */
+    const taskInput = document.getElementById('task-input')
+    const addBtn = document.getElementById('add-btn')
+    const list = document.getElementById('task-list')
+    const taskCount = document.getElementById('task-count')
+    const doneCountEl = document.getElementById('done-count')
+    const progressBar = document.getElementById('progress-bar')
+
+    let tasks = JSON.parse(localStorage.getItem('ss_tasks')||'[]')
+
+    function save(){localStorage.setItem('ss_tasks', JSON.stringify(tasks)); render();}
+
+    function render(){
+      list.innerHTML = ''
+      tasks.forEach((t,idx)=>{
+        const row = document.createElement('div'); row.className='task'
+        row.innerHTML = `
+          <input type="checkbox" ${t.done? 'checked' : ''} data-idx="${idx}" aria-label="complete task">
+          <div class="title">
+            <div style="font-weight:600">${escapeHtml(t.title)}</div>
+            <div class="meta">${t.note||''}</div>
+          </div>
+          <div style="display:flex;gap:6px">
+            <button class="btn" data-edit="${idx}">Edit</button>
+            <button class="btn" data-del="${idx}">Delete</button>
+          </div>
+        `
+        list.appendChild(row)
+      })
+      taskCount.textContent = tasks.length + ' tasks'
+      const done = tasks.filter(t=>t.done).length
+      doneCountEl.textContent = done
+      const pct = tasks.length? Math.round(done/tasks.length*100):0
+      progressBar.style.width = pct + '%'
+    }
+
+    function escapeHtml(s){ return (s||'').replace(/[&<>"]+/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c])) }
+
+    addBtn.addEventListener('click', ()=>{
+      const v = taskInput.value.trim(); if(!v) return; tasks.unshift({title:v,note:'',done:false,created:Date.now()}); taskInput.value=''; save();
+    })
+
+    list.addEventListener('click', (e)=>{
+      const idx = e.target.getAttribute('data-del')
+      if(idx!==null){ tasks.splice(idx,1); save(); return }
+      const edit = e.target.getAttribute('data-edit')
+      if(edit!==null){
+        const newTitle = prompt('Edit task', tasks[edit].title); if(newTitle!==null){ tasks[edit].title = newTitle; save(); }
+        return
+      }
+      const cb = e.target
+      if(cb.tagName === 'INPUT' && cb.type === 'checkbox'){
+        const i = +cb.getAttribute('data-idx'); tasks[i].done = cb.checked; save();
+      }
+    })
+
+    // allow enter to add
+    taskInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter') addBtn.click() })
+
+    /* ======= Notes autosave ======= */
+    const notesEl = document.getElementById('notes')
+    notesEl.value = localStorage.getItem('ss_notes')||''
+    notesEl.addEventListener('input', ()=>{ localStorage.setItem('ss_notes', notesEl.value) })
+
+    /* ======= Pomodoro timer ======= */
+    let focusSeconds = 25*60, breakSeconds = 5*60
+    let remaining = focusSeconds
+    let running = false
+    let mode = 'focus' // 'break'
+    let timerInterval = null
+
+    const timeDisplay = document.getElementById('time-display')
+    const startBtn = document.getElementById('start-btn')
+    const pauseBtn = document.getElementById('pause-btn')
+    const resetBtn = document.getElementById('reset-btn')
+    const modeChip = document.getElementById('mode-chip')
+    const timerSub = document.getElementById('timer-sub')
+
+    function fmt(s){ const m=Math.floor(s/60); const sec=s%60; return String(m).padStart(2,'0')+ ':' + String(sec).padStart(2,'0') }
+    function renderTimer(){ timeDisplay.textContent = fmt(remaining); modeChip.textContent = mode==='focus'?'Focus':'Break'; timerSub.textContent = fmt(focusSeconds) + ' focus — ' + fmt(breakSeconds) + ' break' }
+
+    function tick(){ if(remaining<=0){ // switch
+        mode = (mode==='focus')?'break':'focus'
+        remaining = mode==='focus'? focusSeconds : breakSeconds
+        // small vibration if supported
+        if(navigator.vibrate) navigator.vibrate(200)
+        // flash effect
+        document.getElementById('pomodoro-card').classList.add('pulse')
+        setTimeout(()=>document.getElementById('pomodoro-card').classList.remove('pulse'),700)
+      } else remaining--
+      renderTimer()
+    }
+
+    startBtn.addEventListener('click', ()=>{
+      if(running) return; running=true; timerInterval = setInterval(tick,1000)
+    })
+    pauseBtn.addEventListener('click', ()=>{ running=false; clearInterval(timerInterval) })
+    resetBtn.addEventListener('click', ()=>{ running=false; clearInterval(timerInterval); mode='focus'; remaining=focusSeconds; renderTimer() })
+
+    renderTimer()
+
+    /* ======= Persistence render on load ======= */
+    render()
+
+    /* ======= Download single-file HTML ======= */
+    document.getElementById('download-btn').addEventListener('click', ()=>{
+      const blob = new Blob([document.documentElement.outerHTML], {type:'text/html'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href=url; a.download = 'smart-study-dashboard.html'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),2000)
+    })
+
+    /* ====== Accessibility small improvement: focus styles ====== */
+    document.addEventListener('keydown', (e)=>{ if(e.key==='Tab') document.body.classList.add('show-focus') })
+
+    // expose a small API to window for debugging
+    window.SSD = {tasks,save,render}
+  </script>
+</body>
+</html>
