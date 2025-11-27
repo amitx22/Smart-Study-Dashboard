@@ -1,4 +1,4 @@
-<!doctype html>
+ <!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -38,12 +38,13 @@
     .task{display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;background:var(--glass);border:1px solid rgba(255,255,255,0.02)}
     .task .title{flex:1}
     .task .meta{font-size:12px;color:var(--muted)}
+    .meta{font-size:12px;color:var(--muted)}
 
     /* Right column */
     .right-col{display:flex;flex-direction:column;gap:12px}
     .timer{display:flex;flex-direction:column;align-items:center;gap:6px}
     .time{font-size:36px;font-weight:700}
-    .timer-controls{display:flex;gap:8px}
+    .timer-controls{display:flex;gap:8px;margin-top:4px}
 
     .notes textarea{width:100%;min-height:120px;padding:10px;border-radius:10px;border:1px solid var(--glass);background:transparent;color:inherit}
 
@@ -59,6 +60,25 @@
 
     /* language switch small */
     .lang-select{display:flex;gap:6px}
+
+    /* timer custom settings */
+    .timer-settings{
+      display:flex;
+      align-items:center;
+      gap:6px;
+      font-size:12px;
+      margin-top:4px;
+      flex-wrap:wrap;
+      justify-content:center;
+    }
+    .timer-settings input{
+      width:60px;
+      padding:6px;
+      border-radius:8px;
+      border:1px solid var(--glass);
+      background:transparent;
+      color:inherit;
+    }
 
     /* animations */
     .pulse{animation:pulse 1.8s infinite}
@@ -108,13 +128,23 @@
           <div class="flex" style="width:100%">
             <div>
               <h3 id="timer-title">Pomodoro Timer</h3>
-              <div class="meta" id="timer-sub">25:00 focus — 5:00 break</div>
+              <div class="meta" id="timer-sub">25:00 focus — 05:00 break</div>
             </div>
             <div class="spacer"></div>
             <div class="chip" id="mode-chip">Focus</div>
           </div>
 
           <div class="time" id="time-display">25:00</div>
+
+          <!-- NEW: user custom time controls -->
+          <div class="timer-settings">
+            <span class="meta">Focus (min):</span>
+            <input type="number" id="focus-input" min="1" max="180" value="25">
+            <span class="meta">Break (min):</span>
+            <input type="number" id="break-input" min="1" max="60" value="5">
+            <button class="btn" id="apply-timer">Set</button>
+          </div>
+
           <div class="timer-controls">
             <button class="btn" id="start-btn">Start</button>
             <button class="btn" id="pause-btn">Pause</button>
@@ -238,9 +268,9 @@
     notesEl.value = localStorage.getItem('ss_notes')||''
     notesEl.addEventListener('input', ()=>{ localStorage.setItem('ss_notes', notesEl.value) })
 
-    /* ======= Pomodoro timer ======= */
+    /* ======= Pomodoro timer (user custom) ======= */
     let focusSeconds = 25*60, breakSeconds = 5*60
-    let remaining = focusSeconds
+    let remaining
     let running = false
     let mode = 'focus' // 'break'
     let timerInterval = null
@@ -251,11 +281,42 @@
     const resetBtn = document.getElementById('reset-btn')
     const modeChip = document.getElementById('mode-chip')
     const timerSub = document.getElementById('timer-sub')
+    const focusInput = document.getElementById('focus-input')
+    const breakInput = document.getElementById('break-input')
+    const applyTimerBtn = document.getElementById('apply-timer')
 
-    function fmt(s){ const m=Math.floor(s/60); const sec=s%60; return String(m).padStart(2,'0')+ ':' + String(sec).padStart(2,'0') }
-    function renderTimer(){ timeDisplay.textContent = fmt(remaining); modeChip.textContent = mode==='focus'?'Focus':'Break'; timerSub.textContent = fmt(focusSeconds) + ' focus — ' + fmt(breakSeconds) + ' break' }
+    // load saved custom times (minutes) if available
+    let savedFocus = parseInt(localStorage.getItem('ss_focus'),10)
+    let savedBreak = parseInt(localStorage.getItem('ss_break'),10)
 
-    function tick(){ if(remaining<=0){ // switch
+    if(Number.isFinite(savedFocus) && savedFocus>0){
+      focusSeconds = savedFocus*60
+    }
+    if(Number.isFinite(savedBreak) && savedBreak>0){
+      breakSeconds = savedBreak*60
+    }
+
+    // set remaining based on (possibly) updated focusSeconds
+    remaining = focusSeconds
+
+    // sync inputs with current values
+    focusInput.value = Math.floor(focusSeconds/60)
+    breakInput.value = Math.floor(breakSeconds/60)
+
+    function fmt(s){
+      const m=Math.floor(s/60);
+      const sec=s%60;
+      return String(m).padStart(2,'0')+ ':' + String(sec).padStart(2,'0')
+    }
+
+    function renderTimer(){
+      timeDisplay.textContent = fmt(remaining);
+      modeChip.textContent = mode==='focus'?'Focus':'Break';
+      timerSub.textContent = fmt(focusSeconds) + ' focus — ' + fmt(breakSeconds) + ' break'
+    }
+
+    function tick(){
+      if(remaining<=0){ // switch
         mode = (mode==='focus')?'break':'focus'
         remaining = mode==='focus'? focusSeconds : breakSeconds
         // small vibration if supported
@@ -263,15 +324,42 @@
         // flash effect
         document.getElementById('pomodoro-card').classList.add('pulse')
         setTimeout(()=>document.getElementById('pomodoro-card').classList.remove('pulse'),700)
-      } else remaining--
+      } else {
+        remaining--
+      }
       renderTimer()
     }
+
+    // user sets custom times
+    applyTimerBtn.addEventListener('click', ()=>{
+      const f = parseInt(focusInput.value,10)
+      const b = parseInt(breakInput.value,10)
+      if(!Number.isFinite(f) || f<=0) return
+      if(!Number.isFinite(b) || b<=0) return
+
+      focusSeconds = f*60
+      breakSeconds = b*60
+
+      // save minutes
+      localStorage.setItem('ss_focus', f)
+      localStorage.setItem('ss_break', b)
+
+      // reset current mode time
+      remaining = mode==='focus' ? focusSeconds : breakSeconds
+      renderTimer()
+    })
 
     startBtn.addEventListener('click', ()=>{
       if(running) return; running=true; timerInterval = setInterval(tick,1000)
     })
     pauseBtn.addEventListener('click', ()=>{ running=false; clearInterval(timerInterval) })
-    resetBtn.addEventListener('click', ()=>{ running=false; clearInterval(timerInterval); mode='focus'; remaining=focusSeconds; renderTimer() })
+    resetBtn.addEventListener('click', ()=>{
+      running=false;
+      clearInterval(timerInterval);
+      mode='focus';
+      remaining=focusSeconds;
+      renderTimer()
+    })
 
     renderTimer()
 
